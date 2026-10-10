@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Custom Widget Studio</title>
+  <link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="canvas.css">
+</head>
+<body data-loading data-storage="browser">
+  <div id="startup-notice" role="status">Opening your widget workspace…</div>
+  <header class="app-header">
+    <a class="brand" href="./" aria-label="Open project library"><span class="brand-mark" data-icon="panel-top"></span>Widget Studio</a>
+    <div class="project-title"><input id="project-name" aria-label="Project name" maxlength="160" disabled><span id="save-status" aria-live="polite">Loading…</span></div>
+    <nav class="project-actions" aria-label="Project actions">
+      <button data-action="new">New</button><button data-action="open">Open</button>
+      <button data-action="save" class="primary" id="save-button">Save</button>
+      <button data-action="theme">Shared styles</button><span class="tool-separator" aria-hidden="true"></span><button data-action="preview">Preview</button><button data-action="export" class="primary">Export</button>
+    </nav>
+  </header>
+  <div class="workspace">
+    <aside class="left-panel" aria-label="Elements and layers">
+      <div class="panel-tabs" role="group" aria-label="Sidebar view"><button class="layers-panel-toggle" data-panel-toggle="layers" aria-label="Close layers panel">Close</button><button data-tab="layers" aria-pressed="true">Layers</button><button data-tab="insert" aria-pressed="false">Templates</button></div>
+      <section id="insert-panel" hidden>
+        <h2>Templates</h2>
+        <button class="template-button" data-template="workflow"><span data-icon="layout-template"></span><strong>Connected workflow</strong></button>
+        <button class="template-button" data-template="card"><span data-icon="panel-top"></span><strong>Information card</strong></button>
+        <button class="template-button" data-template="task-list"><span data-icon="list-todo"></span><strong>Task list</strong></button>
+        <button class="template-button" data-template="form"><span data-icon="text-select"></span><strong>Simple form</strong></button>
+        <p class="panel-note">Creates a new project.</p>
+      </section>
+      <section id="layers-panel"><div class="section-heading"><h2>Layers</h2><span id="layer-count"></span></div><div id="layer-list"></div></section>
+      <div class="left-bottom"><button data-action="import">Import project</button><button data-action="shortcuts">Keyboard shortcuts</button></div>
+    </aside>
+    <main class="canvas-panel" aria-label="Design workspace">
+      <div class="canvas-toolbar">
+        <button data-panel-toggle="layers" class="layers-panel-toggle" aria-expanded="false" aria-label="Toggle layers panel">Layers</button><button data-panel-toggle="properties" aria-expanded="true" aria-label="Toggle properties panel">Properties</button><div role="group" aria-label="Canvas tool"><button data-canvas-tool="select" aria-pressed="true" data-tooltip="Select layers · drag empty space for a box">Select</button><button data-canvas-tool="hand" aria-pressed="false" data-tooltip="Pan freely · Space temporarily switches to Hand">Hand</button></div>
+        <label class="frame-picker"><select id="frame-picker" aria-label="Active view"></select></label>
+        <button data-action="views">Views</button><button data-action="blocks">Blocks</button><button data-action="add-frame">Add frame</button>
+        <div class="history-actions"><button data-action="undo" id="undo-button" title="Undo (Command or Control Z)">Undo</button><button data-action="redo" id="redo-button">Redo</button><button data-action="copy" id="copy-button">Copy</button><button data-action="paste" id="paste-button">Paste</button></div>
+        <label class="snap-control" data-tooltip="Snap to 8 px grid"><input type="checkbox" id="snap-toggle" aria-label="Snap"><span data-icon="magnet"></span></label>
+        <div class="zoom-controls"><button data-action="zoom-out" aria-label="Zoom out">−</button><span id="zoom-value">100%</span><button data-action="zoom-in" aria-label="Zoom in">+</button><button data-action="fit">Fit all views</button><button data-action="focus-selection">Focus selection</button></div>
+      </div>
+      <div id="canvas-stage" tabindex="0" aria-label="Widget design canvas"></div>
+      <div class="tool-dock" role="toolbar" aria-label="Insert elements"><button data-add="text">Text</button><button data-add="button">Button</button><button data-add="rectangle">Container</button><button data-add="input">Input</button><button data-add="image">Image</button><button data-add="divider">Divider</button><button data-add="checkbox">Checkbox</button><button data-add="select">Selection</button><button data-add="list">Task list</button></div>
+      <div class="canvas-status"><span id="selection-status">Select an element to edit it</span><span>Drag · Select &nbsp; Space · Pan</span></div>
+    </main>
+    <aside class="right-panel" aria-label="Properties"><div id="inspector"></div></aside>
+  </div>
+  <div id="toast" role="status" aria-live="polite" hidden></div>
+  <dialog id="modal"><div class="modal-heading"><h2 id="modal-title"></h2><button data-action="close-modal" aria-label="Close dialog">Close</button></div><div id="modal-content"></div></dialog>
+  <input id="project-import" type="file" accept=".json,.widget.json,application/json" hidden>
+  <input id="image-upload" type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
