@@ -9,10 +9,10 @@ export const NODE_TYPES = Object.freeze(['text', 'button', 'rectangle', 'input',
 export const PRESETS = Object.freeze(['blank', 'card', 'task-list', 'form', 'workflow']);
 export const DEFAULT_THEME = Object.freeze({accent:'#5856d6',onAccent:'#ffffff',surface:'#f1f3f8',control:'#e4e8f0',text:'#202127',muted:'#697487',fontFamily:'system',bodySize:14,headingSize:24});
 export const STATE_NAMES = Object.freeze(['default','hover','disabled','loading','error','success']);
-export const LIMITS = Object.freeze({ frames: 12, nodes: 300, dimension: 8192, position: 32768, imageUrlChars: 6_000_000, documentBytes: 8_000_000 });
+export const LIMITS = Object.freeze({ frames: 12, nodes: 300, dimension: 8192, position: 32768, canvasPosition: 131072, imageUrlChars: 6_000_000, documentBytes: 8_000_000 });
 
 const documentKeys = ['schemaVersion', 'id', 'name', 'frames', 'activeFrameId', 'entryFrameId', 'theme'];
-const frameKeys = ['id', 'name', 'width', 'height', 'fill', 'nodes', 'layout', 'transition', 'flowHeight'];
+const frameKeys = ['id', 'name', 'width', 'height', 'fill', 'nodes', 'layout', 'transition', 'flowHeight', 'canvasX', 'canvasY'];
 const nodeKeys = ['id', 'type', 'name', 'x', 'y', 'width', 'height', 'text', 'fill', 'color', 'fontSize', 'fontWeight', 'fontFamily', 'radius', 'strokeWidth', 'stroke', 'textAlign', 'opacity', 'visible', 'locked', 'action', 'src', 'parentId', 'layout', 'widthMode', 'heightMode', 'styleRole', 'disabled', 'states', 'multiline', 'flowSizing', 'imageFit', 'imagePosition', 'checked', 'controlVariant', 'options', 'items', 'initialValue', 'inputType', 'validation', 'textBindingId'];
 const actionKeys = ['kind', 'href', 'toolName', 'args', 'targetFrameId','localOp','targetNodeId','formFrameId','resultTargetId','resultPath','message','successFrameId','errorFrameId','clearInput','mode'];
 const own = (object, key) => Object.prototype.hasOwnProperty.call(object, key);
@@ -362,6 +362,7 @@ export function validateDocument(input) {
       fill: color(frame.fill, `${path}.fill`),
       layout: layout(frame.layout,path+'.layout'),
       transition: transition(frame.transition,path+'.transition'),
+      ...(frame.canvasX===undefined&&frame.canvasY===undefined?{}:{canvasX:number(frame.canvasX,path+'.canvasX',-LIMITS.canvasPosition,LIMITS.canvasPosition),canvasY:number(frame.canvasY,path+'.canvasY',-LIMITS.canvasPosition,LIMITS.canvasPosition)}),
       ...(frame.flowHeight===undefined||frame.flowHeight===null?{}:{flowHeight:number(frame.flowHeight,path+'.flowHeight',32,LIMITS.dimension)}),
       nodes: frame.nodes.map((node, nodeIndex) => normalizeNode(node, `${path}.nodes[${nodeIndex}]`, identifiers)),
     };
@@ -534,7 +535,7 @@ export function removeFrame(document, frameId) {
 }
 
 export function updateFrame(document, frameId, patch) {
-  object(patch, 'frame patch', ['name', 'width', 'height', 'fill','layout','transition','flowHeight']);
+  object(patch, 'frame patch', ['name', 'width', 'height', 'fill','layout','transition','flowHeight','canvasX','canvasY']);
   return change(document, copy => {const frame=getFrame(copy,frameId);if(own(patch,'height')&&!own(patch,'flowHeight'))delete frame.flowHeight;Object.assign(frame,patch);});
 }
 

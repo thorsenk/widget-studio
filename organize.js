@@ -1,4 +1,4 @@
-import {cloneDocument,validateDocument,getFrame,defaultNode,collectDescendantIds} from './document.js';
+import {cloneDocument,validateDocument,getFrame,defaultNode,collectDescendantIds,LIMITS} from './document.js';
 import {resolveFrame} from './layout.js';
 import {remapNodeReferences} from './references.js';
 import {initialBoundText} from './authoring-values.js';
@@ -76,6 +76,7 @@ export function duplicateView(document,frameId){
   const copy=cloneDocument(document),source=getFrame(copy,frameId),viewId=defaultNode('rectangle').id;
   const ids=new Map(source.nodes.map(node=>[node.id,defaultNode(node.type).id]));
   const view={...source,id:viewId,name:source.name.slice(0,154)+' copy',nodes:source.nodes.map(node=>({...remapNodeReferences(node,ids,new Map([[frameId,viewId]])),id:ids.get(node.id),parentId:ids.get(node.parentId)||node.parentId}))};
+  if(view.canvasX!==undefined){view.canvasX=Math.min(LIMITS.canvasPosition,view.canvasX+32);view.canvasY=Math.min(LIMITS.canvasPosition,view.canvasY+32);}
   copy.frames.splice(copy.frames.indexOf(source)+1,0,view);copy.activeFrameId=viewId;
   return validateDocument(copy);
 }

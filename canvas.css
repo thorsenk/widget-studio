@@ -32,7 +32,7 @@
   color: #6b6f7c;
   font: 500 12px/1.2 -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
   text-align: left;
-  cursor: pointer;
+  cursor: grab;
 }
 .wui-frame-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .wui-frame-size { color: #9194a0; font-size: 11px; font-weight: 400; font-variant-numeric: tabular-nums; white-space: nowrap; }
@@ -71,6 +71,12 @@
   pointer-events: none;
 }
 .wui-selection.is-locked { outline-color: #969aa7; outline-style: dashed; }
+.wui-frame-selection{position:absolute;left:0;top:0;z-index:9999;pointer-events:none;outline:calc(1.5px * var(--wui-inverse-zoom,1)) solid var(--wui-selection-color)}
+.wui-frame-move-edge{position:absolute;pointer-events:auto;cursor:grab}
+.wui-frame-move-edge--n,.wui-frame-move-edge--s{left:0;width:100%;height:calc(6px * var(--wui-inverse-zoom,1));transform:translateY(-50%)}
+.wui-frame-move-edge--e,.wui-frame-move-edge--w{top:0;height:100%;width:calc(6px * var(--wui-inverse-zoom,1));transform:translateX(-50%)}
+.wui-frame-move-edge--n{top:0}.wui-frame-move-edge--s{top:100%}.wui-frame-move-edge--w{left:0}.wui-frame-move-edge--e{left:100%}
+.wui-frame-selection .wui-resize-handle{z-index:1;width:10px;height:10px}
 .wui-resize-handle {
   position: absolute;
   display: block;

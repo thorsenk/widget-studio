@@ -22,7 +22,7 @@ const snapValue = value => Math.round(value / 8) * 8;
 const editableTarget = target => target?.closest?.('input, textarea, select, [contenteditable="true"]');
 
 /** Geometry stays in document pixels; only pointer deltas are divided by zoom. */
-export function moveNodes(nodes, delta, { snap = false, axisLock = false } = {}) {
+export function moveNodes(nodes, delta, { snap = false, axisLock = false, positionLimit = LIMITS.position } = {}) {
   let dx = number(delta.x);
   let dy = number(delta.y);
   if (axisLock) {
@@ -34,14 +34,15 @@ export function moveNodes(nodes, delta, { snap = false, axisLock = false } = {})
     if (!axisLock || dy !== 0) dy = snapValue(number(nodes[0].y) + dy) - number(nodes[0].y);
   }
   if(nodes.length){
-    dx=clamp(dx,Math.max(...nodes.map(node=>-LIMITS.position-number(node.x))),Math.min(...nodes.map(node=>LIMITS.position-number(node.x))));
-    dy=clamp(dy,Math.max(...nodes.map(node=>-LIMITS.position-number(node.y))),Math.min(...nodes.map(node=>LIMITS.position-number(node.y))));
+    dx=clamp(dx,Math.max(...nodes.map(node=>-positionLimit-number(node.x))),Math.min(...nodes.map(node=>positionLimit-number(node.x))));
+    dy=clamp(dy,Math.max(...nodes.map(node=>-positionLimit-number(node.y))),Math.min(...nodes.map(node=>positionLimit-number(node.y))));
   }
   return nodes.map(node => ({ id: node.id, x: round(number(node.x) + dx), y: round(number(node.y) + dy) }));
 }
 
-export function resizeRect(rect, handle, delta, { snap = false, preserveAspect = false } = {}) {
-  const original = { x: number(rect.x), y: number(rect.y), width: Math.max(MIN_NODE_SIZE, number(rect.width, MIN_NODE_SIZE)), height: Math.max(MIN_NODE_SIZE, number(rect.height, MIN_NODE_SIZE)) };
+export function resizeRect(rect, handle, delta, { snap = false, preserveAspect = false, minSize = MIN_NODE_SIZE, positionLimit = LIMITS.position } = {}) {
+  const minimum=Math.max(MIN_NODE_SIZE,minSize);
+  const original = { x: number(rect.x), y: number(rect.y), width: Math.max(minimum, number(rect.width, minimum)), height: Math.max(minimum, number(rect.height, minimum)) };
   let left = original.x;
   let top = original.y;
   let right = left + original.width;
@@ -60,11 +61,11 @@ export function resizeRect(rect, handle, delta, { snap = false, preserveAspect =
   }
   if (preserveAspect && handle.length === 2) {
     const ratio = original.width / original.height;
-    let width = Math.max(MIN_NODE_SIZE, right - left);
-    let height = Math.max(MIN_NODE_SIZE, bottom - top);
+    let width = Math.max(minimum, right - left);
+    let height = Math.max(minimum, bottom - top);
     if (Math.abs(width - original.width) / original.width >= Math.abs(height - original.height) / original.height) height = width / ratio;
     else width = height * ratio;
-    const scale = Math.max(MIN_NODE_SIZE / width, MIN_NODE_SIZE / height, 1);
+    const scale = Math.max(minimum / width, minimum / height, 1);
     width *= scale;
     height *= scale;
     if (handle.includes('w')) left = original.x + original.width - width;
@@ -72,17 +73,17 @@ export function resizeRect(rect, handle, delta, { snap = false, preserveAspect =
     if (handle.includes('n')) top = original.y + original.height - height;
     else bottom = original.y + height;
   }
-  if (right - left < MIN_NODE_SIZE) {
-    if (handle.includes('w')) left = right - MIN_NODE_SIZE;
-    else right = left + MIN_NODE_SIZE;
+  if (right - left < minimum) {
+    if (handle.includes('w')) left = right - minimum;
+    else right = left + minimum;
   }
-  if (bottom - top < MIN_NODE_SIZE) {
-    if (handle.includes('n')) top = bottom - MIN_NODE_SIZE;
-    else bottom = top + MIN_NODE_SIZE;
+  if (bottom - top < minimum) {
+    if (handle.includes('n')) top = bottom - minimum;
+    else bottom = top + minimum;
   }
   const anchorRight=original.x+original.width,anchorBottom=original.y+original.height;
-  const minWidth=handle.includes('w')?Math.max(1,anchorRight-LIMITS.position):1,maxWidth=handle.includes('w')?Math.min(LIMITS.dimension,anchorRight+LIMITS.position):LIMITS.dimension;
-  const minHeight=handle.includes('n')?Math.max(1,anchorBottom-LIMITS.position):1,maxHeight=handle.includes('n')?Math.min(LIMITS.dimension,anchorBottom+LIMITS.position):LIMITS.dimension;
+  const minWidth=handle.includes('w')?Math.max(minimum,anchorRight-positionLimit):minimum,maxWidth=handle.includes('w')?Math.min(LIMITS.dimension,anchorRight+positionLimit):LIMITS.dimension;
+  const minHeight=handle.includes('n')?Math.max(minimum,anchorBottom-positionLimit):minimum,maxHeight=handle.includes('n')?Math.min(LIMITS.dimension,anchorBottom+positionLimit):LIMITS.dimension;
   let width=clamp(right-left,minWidth,maxWidth),height=clamp(bottom-top,minHeight,maxHeight);
   if(preserveAspect&&handle.length===2){
     const factor=clamp((right-left)/original.width,Math.max(minWidth/original.width,minHeight/original.height),Math.min(maxWidth/original.width,maxHeight/original.height));
@@ -103,15 +104,15 @@ export function layoutFrames(frames) {
   let x = PLANE_PADDING;
   let maxHeight = 0;
   const layout = frames.map(frame => {
-    const item = { id: frame.id, x, y: PLANE_PADDING + LABEL_HEIGHT, width: Math.max(1, number(frame.width, 480)), height: Math.max(1, number(frame.height, 360)) };
+    const item = { id: frame.id, x: number(frame.canvasX,x), y: number(frame.canvasY,PLANE_PADDING + LABEL_HEIGHT), width: Math.max(1, number(frame.width, 480)), height: Math.max(1, number(frame.height, 360)) };
     x += item.width + FRAME_GAP;
     maxHeight = Math.max(maxHeight, item.height);
     return item;
   });
   return {
     frames: layout,
-    width: frames.length ? x - FRAME_GAP + PLANE_PADDING : PLANE_PADDING * 2 + 480,
-    height: PLANE_PADDING * 2 + LABEL_HEIGHT + Math.max(maxHeight, 360),
+    width: Math.max(frames.length ? x - FRAME_GAP + PLANE_PADDING : PLANE_PADDING * 2 + 480,...layout.map(frame=>frame.x+frame.width+PLANE_PADDING)),
+    height: Math.max(PLANE_PADDING * 2 + LABEL_HEIGHT + Math.max(maxHeight, 360),...layout.map(frame=>frame.y+frame.height+PLANE_PADDING)),
   };
 }
 
@@ -198,7 +199,7 @@ export function createCanvas(container, callbacks = {}) {
   viewport.tabIndex = 0;
   viewport.setAttribute('role', 'region');
   viewport.setAttribute('aria-label', 'Widget design canvas');
-  viewport.setAttribute('aria-description','Drag empty space around layers to select them in this view. Shift adds layers. Escape cancels a drag. Space and drag pans.');
+    viewport.setAttribute('aria-description','Drag a view title to move the whole widget. Select its title or background to resize with its handles. Drag empty space around layers to select them. Shift adds layers. Escape cancels. Space and drag pans.');
   const stage = element('div', 'wui-canvas-stage');
   const plane = element('div', 'wui-canvas-plane');
   const live = element('div', 'wui-canvas-live');
@@ -284,16 +285,37 @@ export function createCanvas(container, callbacks = {}) {
       const overlay=overlayEls.get(key(frameId,node.id));
       if(overlay)Object.assign(overlay.style,{left:node.x+'px',top:node.y+'px',width:node.width+'px',height:node.height+'px'});
     }
-    const board=frameEls.get(frameId);if(board)board.style.height=resolved.height+'px';
+    const board=frameEls.get(frameId);if(board){
+      board.style.width=resolved.width+'px';board.style.height=resolved.height+'px';
+      const group=board.parentElement;group.style.width=resolved.width+'px';
+      group.querySelector('.wui-frame-size').textContent=`${round(resolved.width)} × ${round(resolved.height)}`;
+      const overlay=board.querySelector('.wui-frame-selection');if(overlay)Object.assign(overlay.style,{width:resolved.width+'px',height:resolved.height+'px'});
+    }
+    return resolved;
   }
 
   function drawSelection() {
     for (const overlay of overlayEls.values()) overlay.remove();
     overlayEls.clear();
+    for(const overlay of plane.querySelectorAll('.wui-frame-selection'))overlay.remove();
     for (const nodeEl of nodeEls.values()) nodeEl.classList.remove('is-selected');
     const frame = frameById(activeFrameId);
     const frameEl = frameEls.get(activeFrameId);
     if (!frame || !frameEl) return;
+    if(!selection.length){
+      const overlay=element('div','wui-frame-selection');
+      Object.assign(overlay.style,{width:frameEl.style.width,height:frameEl.style.height});
+      for(const edge of ['n','e','s','w']){
+        const grip=element('span','wui-frame-move-edge wui-frame-move-edge--'+edge);grip.dataset.frameMove=frame.id;overlay.append(grip);
+      }
+      const thinX=parseFloat(frameEl.style.width)*zoom/100<24,thinY=parseFloat(frameEl.style.height)*zoom/100<24;
+      const separated=thinX&&thinY?[]:HANDLES.filter(handle=>!(thinY&&/[ns]/.test(handle))&&!(thinX&&/[ew]/.test(handle)));
+      for(const handle of separated.length?separated:['se']){
+        const grip=element('span','wui-resize-handle wui-resize-handle--'+handle);
+        grip.dataset.frameHandle=handle;grip.dataset.frameId=frame.id;grip.setAttribute('aria-hidden','true');overlay.append(grip);
+      }
+      frameEl.append(overlay);
+    }
     for (const id of selection) {
       const node = geometry.get(key(frame.id,id));
       if (!node) continue;
@@ -342,6 +364,7 @@ export function createCanvas(container, callbacks = {}) {
       const label = element('button', 'wui-frame-label');
       label.type = 'button';
       label.dataset.frameLabel = frame.id;
+      label.title='Drag to move the whole widget. Select to show resize handles.';
       label.append(element('span', 'wui-frame-name', frame.name || 'Frame'), element('span', 'wui-frame-size', `${round(position.width)} × ${round(position.height)}`));
       label.setAttribute('aria-pressed', String(frame.id === activeFrameId));
       const artboard = element('div', 'wui-artboard');
@@ -436,12 +459,16 @@ export function createCanvas(container, callbacks = {}) {
       return;
     }
     const handle = event.target.closest('[data-handle]');
+    const frameHandle=event.target.closest('[data-frame-handle]'),frameMove=event.target.closest('[data-frame-move]');
     const nodeEl = event.target.closest('.wui-node');
     const label = event.target.closest('[data-frame-label]');
     const artboard = event.target.closest('[data-artboard]');
-    if (label) {
+    if (label||frameHandle||frameMove) {
       event.preventDefault();
-      activateFrameLabel(label.dataset.frameLabel);
+      const frameId=label?.dataset.frameLabel||frameHandle?.dataset.frameId||frameMove.dataset.frameMove;
+      activateFrameLabel(frameId);
+      const box=layout.frames.find(frame=>frame.id===frameId);
+      interaction={type:frameHandle?'frame-resize':'frame-move',pointerId:event.pointerId,startX:event.clientX,startY:event.clientY,frameId,direction:frameHandle?.dataset.frameHandle,original:{...box},positions:layout.frames.map(frame=>({id:frame.id,canvasX:frame.x,canvasY:frame.y})),patch:null,moved:false};
       return;
     }
     viewport.focus({ preventScroll: true });
@@ -517,6 +544,24 @@ export function createCanvas(container, callbacks = {}) {
     }
     viewport.classList.add(current.type === 'resize' ? 'is-resizing' : 'is-moving');
     const delta = { x: dx / (zoom / 100), y: dy / (zoom / 100) };
+    if(current.type==='frame-move'||current.type==='frame-resize'){
+      const original=current.original,frame=frameById(current.frameId);
+      if(current.type==='frame-move'){
+        const [position]=moveNodes([original],delta,{snap,axisLock:event.shiftKey,positionLimit:LIMITS.canvasPosition});
+        current.patch={canvasX:position.x,canvasY:position.y};
+      }else{
+        const box=resizeRect(original,current.direction,delta,{snap,preserveAspect:event.shiftKey,minSize:32,positionLimit:LIMITS.canvasPosition});
+        current.patch={canvasX:box.x,canvasY:box.y,width:box.width};
+        if(/[ns]/.test(current.direction))current.patch.height=box.height;
+        const next={...frame,...current.patch};if(current.patch.height!==undefined)delete next.flowHeight;
+        const resolved=previewFrame(current.frameId,next);
+        // Content height is a minimum. North handles keep the rendered bottom anchored.
+        if(current.direction.includes('n'))current.patch.canvasY=clamp(round(original.y+original.height-resolved.height),-LIMITS.canvasPosition,LIMITS.canvasPosition);
+      }
+      const group=frameEls.get(current.frameId).parentElement;
+      Object.assign(group.style,{left:current.patch.canvasX+'px',top:(current.patch.canvasY-LABEL_HEIGHT)+'px'});
+      return;
+    }
     if(current.type==='reorder') {
       const origin=current.slots.find(item=>item.id===current.nodes[0].id);
       const point={x:origin.x+delta.x,y:origin.y+delta.y};
@@ -557,6 +602,17 @@ export function createCanvas(container, callbacks = {}) {
       if(!commit){if(notifySelection)select(current.originalSelection,current.originalFrameId);}
       else if(!current.moved)select(current.additive?current.baseSelection:[],current.frameId);
       if(commit)live.textContent=`Selected ${selection.length} layer${selection.length===1?'':'s'}.`;
+      return;
+    }
+    if(current.type==='frame-move'||current.type==='frame-resize'){
+      const original=current.original,patch=current.patch;
+      const changed=patch&&Object.entries(patch).some(([name,value])=>value!==({canvasX:original.x,canvasY:original.y,width:original.width,height:original.height})[name]);
+      if(commit&&changed){
+        try{callbacks.onFrameCommit?.({frameId:current.frameId,patch,positions:current.positions});}
+        catch(error){draw();callbacks.onError?.(error);live.textContent='Widget edit was not applied.';return;}
+        live.textContent=current.type==='frame-move'?'Moved the whole widget.':'Resized the widget; contents follow layout rules.';
+      }else if(current.moved)draw();
+      if(current.moved)suppressClick=true;
       return;
     }
     if(current.type==='reorder') {

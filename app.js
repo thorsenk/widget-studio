@@ -48,6 +48,7 @@ const canvas=createCanvas($('canvas-stage'),{
   onSelect(ids,frameId){finishEdit();doc={...doc,activeFrameId:frameId};selected=ids;renderPanels();},
   onFrameSelect(frameId){finishEdit();doc={...doc,activeFrameId:frameId};selected=[];render();},
   onCommit(patches){let next=doc;for(const item of patches)next=updateNode(next,item.frameId,item.id,item.patch);commit(next);},
+  onFrameCommit({frameId,patch,positions}){let next=doc;for(const position of positions)next=updateFrame(next,position.id,{canvasX:position.canvasX,canvasY:position.canvasY});commit(updateFrame(next,frameId,patch),{selection:[]});},
   onReorder({frameId,nodeId,index}){commit(reorderNode(doc,frameId,nodeId,index));},
   onError(error){toast('Canvas edit could not be applied: '+errorDetail(error),true);},
   onEditText(id,text,frameId=doc.activeFrameId){try{const node=getNode(doc,frameId,id);commit(updateNode(doc,frameId,id,styledPatch(node,{text},frameId)));lastInlineError=null;}catch(error){lastInlineError=errorDetail(error);render();toast('Text: '+lastInlineError,true);}},
