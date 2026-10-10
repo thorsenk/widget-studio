@@ -12,6 +12,26 @@ const NODE_TYPES = new Set(['text', 'button', 'rectangle', 'input', 'image', 'di
 const TOOL_NAME = /^[A-Za-z_][A-Za-z0-9_.-]{0,127}$/;
 const HTML_ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 
+/** Host proxies may wrap an MCP failure in JSON or implementation diagnostics. */
+export function hostErrorMessage(error) {
+  const fallback = 'The tool reported an error. Please try again.';
+  let value = error;
+  for (let depth = 0; depth < 5; depth++) {
+    if (value && typeof value === 'object') {
+      const content = value.content || value.data?.content;
+      const text = Array.isArray(content) ? content.filter(item => item?.type === 'text' && typeof item.text === 'string').map(item => item.text).join('\n') : '';
+      if (text) { value = text; continue; }
+      value = value.message ?? value.detail ?? value.error;
+      continue;
+    }
+    if (typeof value !== 'string' || !value.trim()) return fallback;
+    try { const parsed = JSON.parse(value); if (parsed && (typeof parsed === 'object' || typeof parsed === 'string')) { value = parsed; continue; } } catch {}
+    if (/(?:RuntimeException|TextContent\(|Traceback|^Error code:)/.test(value)) return fallback;
+    return value.slice(0, 4000);
+  }
+  return fallback;
+}
+
 function escapeHTML(value) {
   return String(value ?? '').replace(/[&<>"']/g, (character) => HTML_ESCAPES[character]);
 }
@@ -132,7 +152,7 @@ function renderNode(node, index, actions, children = '') {
 
 // This code is emitted verbatim. Authored data is parsed from an escaped JSON
 // script element; it never becomes JavaScript source, HTML, CSS, or an import.
-function widgetRuntime(resolveInputBindings, resolveFrame, createTextMeasurer, createLocalBehavior, makeDemoResult) {
+function widgetRuntime(resolveInputBindings, resolveFrame, createTextMeasurer, createLocalBehavior, makeDemoResult, hostErrorMessage) {
   'use strict';
   const config = JSON.parse(document.getElementById('widget-config').textContent);
   const status = document.getElementById('widget-status');
@@ -255,6 +275,7 @@ function widgetRuntime(resolveInputBindings, resolveFrame, createTextMeasurer, c
     });
   }
   function resultText(result) {
+    if (result?.isError) return hostErrorMessage(result);
     const texts = Array.isArray(result?.content) ? result.content.filter((item) => item?.type === 'text').map((item) => String(item.text ?? '')) : [];
     return texts.join('\n') || (result?.isError ? 'The tool reported an error.' : 'Tool completed.');
   }
@@ -267,7 +288,7 @@ function widgetRuntime(resolveInputBindings, resolveFrame, createTextMeasurer, c
       if (!entry || (!Object.hasOwn(message, 'result') && !Object.hasOwn(message, 'error'))) return;
       clearTimeout(entry.timer);
       pending.delete(message.id);
-      if (message.error) entry.reject(new Error(String(message.error.message || 'Host request failed.')));
+      if (message.error) entry.reject(new Error(hostErrorMessage(message.error)));
       else entry.resolve(message.result);
       return;
     }
@@ -446,7 +467,7 @@ ${stateCSS}
 <main id="widget-frame" class="widget-frame" aria-label="${escapeHTML(frame.name)}" style="${escapeHTML(frameStyle)}">${views}</main>
 <div id="widget-status" class="widget-status" hidden><div id="widget-status-message" class="widget-status-message" role="status" aria-live="polite"></div><button id="widget-status-dismiss" class="widget-dismiss" type="button">Dismiss</button></div>
 <script id="widget-config" type="application/json">${scriptJSON(config)}</script>
-<script>(${widgetRuntime.toString()})(${resolveInputBindings.toString()},${resolveFrame.toString()},${createTextMeasurer.toString()},${createLocalBehavior.toString()},${makeDemoResult.toString()});</script>
+<script>(${widgetRuntime.toString()})(${resolveInputBindings.toString()},${resolveFrame.toString()},${createTextMeasurer.toString()},${createLocalBehavior.toString()},${makeDemoResult.toString()},${hostErrorMessage.toString()});</script>
 </body></html>`;
 }
 
